@@ -25,6 +25,7 @@ from PyQt5.QtWidgets import *
 from config_tab import Config
 from cell_def_tab import CellDef 
 from microenv_tab import SubstrateDef 
+from rules_tab import RulesDef 
 from user_params_tab import UserParams 
 from run_tab import RunModel 
 from vis_tab import Vis 
@@ -62,9 +63,8 @@ class PhysiCellXMLCreator(QWidget):
         # self.title_prefix = "PhysiCell Studio"
         self.setWindowTitle(self.title_prefix)
 
-        # Menus
         vlayout = QVBoxLayout(self)
-        # vlayout.setContentsMargins(5, 35, 5, 5)  # left,top,right,bottom
+        # left,top,right,bottom
         vlayout.setContentsMargins(-1, 10, -1, -1)
         # if not self.nanohub_flag:
         if True:
@@ -79,27 +79,12 @@ class PhysiCellXMLCreator(QWidget):
 
         self.resize(950, 770)  # width, height (height >= Cell Types|Death params)
         self.setMinimumSize(750, 770)  # width, height (height >= Cell Types|Death params)
-        # self.setMinimumSize(1200, 770)  # width, height (height >= Cell Types|Death params)
 
-        # self.menubar = QtWidgets.QMenuBar(self)
-        # self.file_menu = QtWidgets.QMenu('File')
-        # self.file_menu.insertAction("Open")
-        # self.menubar.addMenu(self.file_menu)
-
-        # GUI tabs
-
-        # By default, let's startup the app with a default of template2D (a copy)
-        # self.new_model_cb()  # default on startup
-        # read_file = "../data/subcellular_flat.xml"
-
-        # model_name = "biorobots_flat"
+        # Needs to be "flat", not hierarchical
         # model_name = "PhysiCell_settings"
-        model_name = "interaction"
-        # model_name = "mechanics_flat"
-        # read_file = "data/" + model_name + ".xml"
+        # model_name = "interaction"
+        model_name = "mymodel"
 
-        # then what??
-        # binDirectory = os.path.realpath(os.path.abspath(__file__))
         binDirectory = os.path.dirname(os.path.abspath(__file__))
         dataDirectory = os.path.join(binDirectory,'..','data')
         print("-------- dataDirectory (relative) =",dataDirectory)
@@ -107,14 +92,9 @@ class PhysiCellXMLCreator(QWidget):
         print("-------- absolute_data_dir =",self.absolute_data_dir)
 
         # NOTE: we set an env var here so in custom.cpp, it will also use it to read data (e.g., .csv)
-        os.environ['KIDNEY_DATA_PATH'] = self.absolute_data_dir
-        # dataDirectory = os.path.join(binDirectory,'..','config')
-        # dataDirectory = os.path.join('.','config')
+        os.environ['STUDIO_DATA_PATH'] = self.absolute_data_dir
 
-        # read_file = model_name + ".xml"
-        # read_file = os.path.join(dataDirectory, model_name + ".xml")
         read_file = os.path.join(self.absolute_data_dir, model_name + ".xml")
-        # self.setWindowTitle(self.title_prefix + model_name)
 
 
         # NOTE! We create a *copy* of the .xml sample model and will save to it.
@@ -176,6 +156,10 @@ class PhysiCellXMLCreator(QWidget):
         # self.cell_customdata_tab.celldef_tab = self.celldef_tab
         # self.cell_customdata_tab.fill_gui(self.celldef_tab)
         # self.celldef_tab.fill_custom_data_tab()
+
+        self.rules_tab = RulesDef()
+        self.rules_tab.xml_root = self.xml_root
+        # self.rules_tab.fill_gui()
         
         self.user_params_tab = UserParams()
         self.user_params_tab.xml_root = self.xml_root
@@ -190,7 +174,7 @@ class PhysiCellXMLCreator(QWidget):
 
         self.tabWidget = QTabWidget()
 
-        self.run_tab = RunModel(self.nanohub_flag, self.tabWidget)
+        self.run_tab = RunModel(self.nanohub_flag, self.tabWidget, self.download_menu)
         self.homedir = os.getcwd()
         print("studio.py: self.homedir = ",self.homedir)
         self.run_tab.homedir = self.homedir
@@ -205,6 +189,7 @@ class PhysiCellXMLCreator(QWidget):
             self.run_tab.config_tab = self.config_tab
             self.run_tab.microenv_tab = self.microenv_tab 
             self.run_tab.celldef_tab = self.celldef_tab
+            self.run_tab.rules_tab = self.rules_tab
             self.run_tab.user_params_tab = self.user_params_tab
             self.run_tab.tree = self.tree
 
@@ -218,6 +203,7 @@ class PhysiCellXMLCreator(QWidget):
         self.tabWidget.addTab(self.microenv_tab,"Microenvironment")
         self.tabWidget.addTab(self.celldef_tab,"Cell Types")
         # self.tabWidget.addTab(self.cell_customdata_tab,"Cell Custom Data")
+        # self.tabWidget.addTab(self.rules_tab,"Rules")
         self.tabWidget.addTab(self.user_params_tab,"User Params")
         self.tabWidget.addTab(self.run_tab,"Run")
         if show_vis_flag:
@@ -257,6 +243,23 @@ class PhysiCellXMLCreator(QWidget):
         menubar.setNativeMenuBar(False)
 
         #--------------
+        file_menu = menubar.addMenu('&File')
+
+        file_menu.addAction("Reset", self.reset_xml_root)
+
+        # file_menu.addAction("Toggle mechanics grid", self.toggle_mechanics_grid)
+        # file_menu.addAction("Toggle vectors", self.toggle_vectors)
+        # file_menu.addAction("Toggle adhesion circle", self.toggle_membrane_adhesion_arc)
+
+        self.download_menu = file_menu.addMenu('Download')
+        self.download_config_item = self.download_menu.addAction("Download config.xml", self.download_config_cb)
+        self.download_svg_item = self.download_menu.addAction("Download SVG", self.download_svg_cb)
+        self.download_svg_item = self.download_menu.addAction("Download full (.mat) data", self.download_full_cb)
+        # self.download_menu_item.setEnabled(False)
+        self.download_menu.setEnabled(False)
+
+        menubar.adjustSize()  # Argh. Otherwise, only 1st menu appears, with ">>" to others!
+
         # file_menu = menubar.addMenu('&Model')
 
         # # open_act = QtGui.QAction('Open', self, checkable=True)
@@ -364,54 +367,174 @@ class PhysiCellXMLCreator(QWidget):
         self.user_params_tab.xml_root = self.xml_root
         self.user_params_tab.fill_gui()
 
+    #-----------------------------------------------------------------
+    def message(self, s):
+        # self.text.appendPlainText(s)
+        print(s)
+
+    def handle_stderr(self):
+        data = self.p.readAllStandardError()
+        stderr = bytes(data).decode("utf8")
+        self.message(stderr)
+
+    def handle_stdout(self):
+        data = self.p.readAllStandardOutput()
+        stdout = bytes(data).decode("utf8")
+        self.message(stdout)
+
+    def handle_state(self, state):
+        states = {
+            QProcess.NotRunning: 'Not running',
+            QProcess.Starting: 'Starting',
+            QProcess.Running: 'Running',
+        }
+        state_name = states[state]
+        self.message(f"State changed: {state_name}")
+
+    def process_finished(self):
+        self.message("Download process finished.")
+        print("-- download finished.")
+        self.p = None
+
+    def download_config_cb(self):
+        if self.nanohub_flag:
+            if self.p is None:  # No process running.
+                self.p = QProcess()
+                self.p.readyReadStandardOutput.connect(self.handle_stdout)
+                self.p.readyReadStandardError.connect(self.handle_stderr)
+                self.p.stateChanged.connect(self.handle_state)
+                self.p.finished.connect(self.process_finished)  # Clean up once complete.
+
+                self.p.start("exportfile config.xml")
+        return
+
+    def download_svg_cb(self):
+        if self.nanohub_flag:
+            if self.p is None:  # No process running.
+                self.p = QProcess()
+                self.p.readyReadStandardOutput.connect(self.handle_stdout)
+                self.p.readyReadStandardError.connect(self.handle_stderr)
+                self.p.stateChanged.connect(self.handle_state)
+                self.p.finished.connect(self.process_finished)  # Clean up once complete.
+
+                # file_str = os.path.join(self.output_dir, '*.svg')
+                file_str = "*.svg"
+                print('-------- download_svg_cb(): zip up all ',file_str)
+                with zipfile.ZipFile('svg.zip', 'w') as myzip:
+                    for f in glob.glob(file_str):
+                        myzip.write(f, os.path.basename(f))   # 2nd arg avoids full filename 
+                self.p.start("exportfile svg.zip")
+        return
+
+    def download_full_cb(self):
+        if self.nanohub_flag:
+            if self.p is None:  # No process running.
+                self.p = QProcess()
+                self.p.readyReadStandardOutput.connect(self.handle_stdout)
+                self.p.readyReadStandardError.connect(self.handle_stderr)
+                self.p.stateChanged.connect(self.handle_state)
+                self.p.finished.connect(self.process_finished)  # Clean up once complete.
+
+                # file_xml = os.path.join(self.output_dir, '*.xml')
+                # file_mat = os.path.join(self.output_dir, '*.mat')
+                file_xml = '*.xml'
+                file_mat = '*.mat'
+                print('-------- download_full_cb(): zip up all .xml and .mat')
+                with zipfile.ZipFile('mcds.zip', 'w') as myzip:
+                    for f in glob.glob(file_xml):
+                        myzip.write(f, os.path.basename(f)) # 2nd arg avoids full filename path in the archive
+                    for f in glob.glob(file_mat):
+                        myzip.write(f, os.path.basename(f))
+                self.p.start("exportfile mcds.zip")
+        return
+
 
     def reset_xml_root(self):
+        with open(self.read_file, 'r') as xml_file:
+            self.tree = ET.parse(xml_file)
+
         self.celldef_tab.param_d.clear()  # seems unnecessary as being done in populate_tree. argh.
         self.celldef_tab.clear_custom_data_tab()
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("reset_xml_root(): after celldef_tab.param_d.clear(), param_d = ", self.celldef_tab.param_d)
         self.celldef_tab.current_cell_def = None
-        # self.microenv_tab.param_d.clear()
+        # self.celldef_tab.current_cell_def = self.celldef_tab.tree.currentItem().text(0)
 
         self.xml_root = self.tree.getroot()
         self.config_tab.xml_root = self.xml_root
         self.microenv_tab.xml_root = self.xml_root
         self.celldef_tab.xml_root = self.xml_root
-        # self.cell_customdata_tab.xml_root = self.xml_root
         self.user_params_tab.xml_root = self.xml_root
-        # self.run_tab.xml_root = self.xml_root
 
         # --------Now fill all tabs' params------
         self.config_tab.fill_gui()
 
         self.microenv_tab.clear_gui()
         self.microenv_tab.populate_tree()
-        # self.microenv_tab.fill_gui(None)
-        # self.microenv_tab.fill_gui()
 
-        # Do this before the celldef_tab
-        # self.cell_customdata_tab.clear_gui(self.celldef_tab)
-        # self.cell_customdata_tab.fill_gui(self.celldef_tab)
-
-        # self.celldef_tab.clear_gui()
         self.celldef_tab.clear_custom_data_params()
+        # self.celldef_tab.update_custom_data_params()
         self.celldef_tab.populate_tree()
-        # self.celldef_tab.fill_gui(None)
-        # self.celldef_tab.customize_cycle_choices() #rwh/todo: needed? 
         self.celldef_tab.fill_substrates_comboboxes()
         self.microenv_tab.celldef_tab = self.celldef_tab
-
-        # self.cell_customdata_tab.clear_gui(self.celldef_tab)
-        # self.cell_customdata_tab.fill_gui(self.celldef_tab)
 
         self.user_params_tab.clear_gui()
         self.user_params_tab.fill_gui()
 
         self.vis_tab.init_plot_range(self.config_tab)
         self.vis_tab.reset_model()
-        # self.vis_tab.setEnabled(False)
         self.enablePlotTab(False)
         self.tabWidget.setCurrentIndex(0)  # Config (default)
+
+        self.download_menu.setEnabled(False)
+
+    # def reset_xml_root(self):
+    #     self.celldef_tab.param_d.clear()  # seems unnecessary as being done in populate_tree. argh.
+    #     self.celldef_tab.clear_custom_data_tab()
+    #     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    #     print("reset_xml_root(): after celldef_tab.param_d.clear(), param_d = ", self.celldef_tab.param_d)
+    #     self.celldef_tab.current_cell_def = None
+    #     # self.microenv_tab.param_d.clear()
+
+    #     self.xml_root = self.tree.getroot()
+    #     self.config_tab.xml_root = self.xml_root
+    #     self.microenv_tab.xml_root = self.xml_root
+    #     self.celldef_tab.xml_root = self.xml_root
+    #     # self.cell_customdata_tab.xml_root = self.xml_root
+    #     self.user_params_tab.xml_root = self.xml_root
+    #     # self.run_tab.xml_root = self.xml_root
+
+    #     # --------Now fill all tabs' params------
+    #     self.config_tab.fill_gui()
+
+    #     self.microenv_tab.clear_gui()
+    #     self.microenv_tab.populate_tree()
+    #     # self.microenv_tab.fill_gui(None)
+    #     # self.microenv_tab.fill_gui()
+
+    #     # Do this before the celldef_tab
+    #     # self.cell_customdata_tab.clear_gui(self.celldef_tab)
+    #     # self.cell_customdata_tab.fill_gui(self.celldef_tab)
+
+    #     # self.celldef_tab.clear_gui()
+    #     self.celldef_tab.clear_custom_data_params()
+    #     self.celldef_tab.populate_tree()
+    #     # self.celldef_tab.fill_gui(None)
+    #     # self.celldef_tab.customize_cycle_choices() #rwh/todo: needed? 
+    #     self.celldef_tab.fill_substrates_comboboxes()
+    #     self.microenv_tab.celldef_tab = self.celldef_tab
+
+    #     # self.cell_customdata_tab.clear_gui(self.celldef_tab)
+    #     # self.cell_customdata_tab.fill_gui(self.celldef_tab)
+
+    #     self.user_params_tab.clear_gui()
+    #     self.user_params_tab.fill_gui()
+
+    #     self.vis_tab.init_plot_range(self.config_tab)
+    #     self.vis_tab.reset_model()
+    #     # self.vis_tab.setEnabled(False)
+    #     self.enablePlotTab(False)
+    #     self.tabWidget.setCurrentIndex(0)  # Config (default)
 
 
     def show_sample_model(self):

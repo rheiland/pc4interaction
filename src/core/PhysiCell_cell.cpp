@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2021, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2022, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -130,6 +130,9 @@ Cell_Definition::Cell_Definition()
 	pMicroenvironment = NULL;
 	if( BioFVM::get_default_microenvironment() != NULL )
 	{ pMicroenvironment = BioFVM::get_default_microenvironment(); }
+
+//	extern std::unordered_map<std::string,int> cell_definition_indices_by_name; 
+//	int number_of_cell_defs = cell_definition_indices_by_name.size(); 
 
 	// set up the default parameters 
 		// the default Cell_Parameters constructor should take care of this
@@ -290,9 +293,13 @@ void Cell::update_motility_vector( double dt_ )
 
 void Cell::advance_bundled_phenotype_functions( double dt_ )
 {
+	// New March 2022
+	// perform transformations 
+	standard_cell_transformations( this,this->phenotype,dt_ ); 
+	
 	// call the custom code to update the phenotype 
 	if( functions.update_phenotype )
-	{	functions.update_phenotype( this , phenotype , dt_ ); }
+	{ functions.update_phenotype( this , phenotype , dt_ ); }
 	
 	// update volume 
 	if( functions.volume_update_function )
@@ -645,7 +652,7 @@ void Cell::set_total_volume(double volume)
 	// if( fabs( phenotype.volume.total - volume ) < 1e-16 )
 	if( fabs( phenotype.volume.total - volume ) > 1e-16 )
 	{
-		double ratio= volume/ phenotype.volume.total;
+		double ratio= volume/ (phenotype.volume.total + 1e-16);  
 		phenotype.volume.multiply_by_ratio(ratio);
 	}
 	
@@ -885,7 +892,12 @@ void Cell::add_potentials(Cell* other_agent)
 	// if( this->ID == other_agent->ID )
 	if( this == other_agent )
 	{ return; }
-
+/*
+	// new April 2022: don't interact with cells with 0 volume 
+	// does not seem to really help 
+	if( other_agent->phenotype.volume.total < 1e-15 )
+	{ std::cout << "zero size cell in mechanics!" << std::endl; return; }
+*/
 	// 12 uniform neighbors at a close packing distance, after dividing out all constants
 	static double simple_pressure_scale = 0.027288820670331; // 12 * (1 - sqrt(pi/(2*sqrt(3))))^2 
 	// 9.820170012151277; // 12 * ( 1 - sqrt(2*pi/sqrt(3)))^2
@@ -1181,20 +1193,26 @@ std::vector<Cell*> Cell::nearby_interacting_cells( void )
 
 void Cell::ingest_cell( Cell* pCell_to_eat )
 {
+	// don't ingest self 
+	if( pCell_to_eat == this )
+	{ return; } 
+	
 	// don't ingest a cell that's already ingested 
-	if( pCell_to_eat->phenotype.volume.total < 1e-15 || this == pCell_to_eat )
+	if( pCell_to_eat->phenotype.volume.total < 1e-15 )
 	{ return; } 
 		
 	// make this thread safe 
 	#pragma omp critical
 	{
-		bool volume_was_zero = false; 
-		if( pCell_to_eat->phenotype.volume.total < 1e-15 )
-		{
-			volume_was_zero = true; 
-			std::cout << this << " " << this->type_name << " ingests " 
-			<< pCell_to_eat << " " << pCell_to_eat->type_name << std::endl; 
-		}
+		/*
+		if( pCell_to_eat->phenotype.death.dead == true )
+		{ std::cout << this->type_name << " (" << this << ")" << " eats dead " << pCell_to_eat->type_name << " (" << pCell_to_eat 
+			<< ") of size " << pCell_to_eat->phenotype.volume.total << std::endl; }
+		else
+		{ std::cout << this->type_name << " (" << this << ")" << " eats live " << pCell_to_eat->type_name << " (" << pCell_to_eat 
+			<< ") of size " << pCell_to_eat->phenotype.volume.total << std::endl; }
+		*/
+
 		// absorb all the volume(s)
 
 		// absorb fluid volume (all into the cytoplasm) 
@@ -1266,6 +1284,9 @@ void Cell::ingest_cell( Cell* pCell_to_eat )
 		pCell_to_eat->functions.custom_cell_rule = NULL; 
 		pCell_to_eat->functions.update_phenotype = NULL; 
 		pCell_to_eat->functions.contact_function = NULL; 
+		
+		// should set volume fuction to NULL too! 
+		pCell_to_eat->functions.volume_update_function = NULL; 
 
 		// remove all adhesions 
 		// pCell_to_eat->remove_all_attached_cells();
@@ -1284,12 +1305,19 @@ void Cell::ingest_cell( Cell* pCell_to_eat )
 
 void Cell::attack_cell( Cell* pCell_to_attack , double dt )
 {
-	if( pCell_to_attack->phenotype.death.dead == true )
+	// don't attack self 
+	if( pCell_to_attack == this )
+	{ return; } 
+	
+	// don't attack a dead or tiny cell 
+	if( pCell_to_attack->phenotype.death.dead == true || pCell_to_attack->phenotype.volume.total < 1e-15 )
 	{ return; } 
 	
 	// make this thread safe 
 	#pragma omp critical
 	{ 
+		// std::cout << this->type_name << " attacks " << pCell_to_attack->type_name << std::endl;
+		// 
 		pCell_to_attack->state.damage += phenotype.cell_interactions.damage_rate * dt; 
 		pCell_to_attack->state.total_attack_time += dt; 
 	}
@@ -1300,20 +1328,13 @@ void Cell::attack_cell( Cell* pCell_to_attack , double dt )
 
 void Cell::fuse_cell( Cell* pCell_to_fuse )
 {
-	// don't ingest a cell that's already fused 
+	// don't ingest a cell that's already fused or fuse self 
 	if( pCell_to_fuse->phenotype.volume.total < 1e-15 || this == pCell_to_fuse )
 	{ return; } 
 		
 	// make this thread safe 
 	#pragma omp critical
 	{
-		bool volume_was_zero = false; 
-		if( pCell_to_fuse->phenotype.volume.total < 1e-15 )
-		{
-			volume_was_zero = true; 
-			std::cout << this << " " << this->type_name << " fuses " 
-			<< pCell_to_fuse << " " << pCell_to_fuse->type_name << std::endl; 
-		}
 
 		// set new position at center of volume 
 			// x_new = (vol_B * x_B + vol_S * x_S ) / (vol_B + vol_S )

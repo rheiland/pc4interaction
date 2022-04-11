@@ -24,11 +24,12 @@ class QHLine(QFrame):
         self.setFrameShadow(QFrame.Sunken)
 
 class RunModel(QWidget):
-    def __init__(self, nanohub_flag, tab_widget):
+    def __init__(self, nanohub_flag, tab_widget, download_menu):
         super().__init__()
 
         self.nanohub_flag = nanohub_flag
         self.tab_widget = tab_widget
+        self.download_menu = download_menu
 
         #-------------------------------------------
         # used with nanoHUB app
@@ -41,6 +42,7 @@ class RunModel(QWidget):
         self.config_tab = None
         self.microenv_tab = None
         self.celldef_tab = None
+        self.rules_tab = None
         self.user_params_tab = None
 
         #-----
@@ -254,4 +256,6 @@ class RunModel(QWidget):
     def process_finished(self):
         self.message("Process finished.")
         print("-- process finished.")
+        self.vis_tab.first_plot_cb("foo")
+        self.download_menu.setEnabled(True)
         self.p = None

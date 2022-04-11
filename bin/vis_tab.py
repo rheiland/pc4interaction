@@ -55,8 +55,8 @@ class Vis(QWidget):
         self.num_contours = 15
         self.num_contours = 25
         self.num_contours = 50
-        self.fontsize = 9
-        self.title_fontsize = 10
+        self.fontsize = 4
+        self.title_fontsize = 6
 
         self.plot_svg_flag = True
         # self.plot_svg_flag = False
@@ -213,7 +213,7 @@ class Vis(QWidget):
 
         self.substrates_checkbox = QCheckBox('Substrates')
         self.substrates_checkbox.setChecked(False)
-        self.substrates_checkbox.setEnabled(False)
+        # self.substrates_checkbox.setEnabled(False)
         self.substrates_checkbox.clicked.connect(self.substrates_toggle_cb)
         self.substrates_checked_flag = False
         self.glayout1.addWidget(self.substrates_checkbox, 0,7,1,2) # w, row, column, rowspan, colspan

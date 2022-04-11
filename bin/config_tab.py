@@ -307,7 +307,7 @@ class Config(QWidget):
         label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.vbox.addWidget(label)
-        self.cells_csv = QCheckBox("config/cells.csv")
+        # self.cells_csv = QCheckBox("config/cells.csv")
         self.cells_csv = QCheckBox("cells.csv")
 
         self.vbox.addWidget(self.cells_csv)
@@ -483,10 +483,11 @@ class Config(QWidget):
         else:
             self.xml_root.find(".//initial_conditions//cell_positions").attrib['enabled'] = 'false'
 
-        self.xml_root.find(".//initial_conditions//cell_positions").attrib['enabled'] = 'true'
+        # rwh: do we want to override sometimes?
+        # self.xml_root.find(".//initial_conditions//cell_positions").attrib['enabled'] = 'true'
 
         # self.xml_root.find(".//initial_conditions//cell_positions/folder").text = ''
-        self.xml_root.find(".//initial_conditions//cell_positions/folder").text = '../data'
+        self.xml_root.find(".//initial_conditions//cell_positions/folder").text = '../data'  #rwh ??
         # if self.csv_rb1.isChecked():
         #     self.xml_root.find(".//initial_conditions//cell_positions/filename").text = 'all_cells.csv'
         # else:

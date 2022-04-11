@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2021, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2022, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -1194,6 +1194,7 @@ double& Cell_Interactions::live_phagocytosis_rate( std::string type_name )
 {
 	extern std::unordered_map<std::string,int> cell_definition_indices_by_name; 
 	int n = cell_definition_indices_by_name[type_name]; 
+	// std::cout << type_name << " " << n << std::endl; 
 	return live_phagocytosis_rates[n]; 
 }
 
@@ -1236,36 +1237,6 @@ double& Cell_Transformations::transformation_rate( std::string type_name )
 	int n = cell_definition_indices_by_name[type_name]; 
 	return transformation_rates[n]; 
 }
-
-
-
-/*
-class Cell_Interactions
-{
- private:
- public: 
-	// phagocytosis parameters (e.g., macrophages)
-	double dead_phagocytosis_rate; 
-	std::vector<double> live_phagocytosis_rates; 
-	// attack parameters (e.g., T cells)
-	std::vector<double> live_attack_rates; 
-	// cell fusion parameters 
-	std::vector<double> fusion_rates;
-	
-	// initialization 
-
-	void sync_to_cell_definitions(); 
-	
-	// ease of access 
-	double& live_phagocytosis_rate( std::string type_name  ); 
-	double& live_attack_rate( std::string type_name ); 
-	double& fusion_rate( std::string type_name ); 
-	
-	// automated cell phagocytosis, attack, and fusion 
-	void perform_interactions( Cell* pCell, Phenotype& phenotype, double dt ); 
-};
-*/
-
 
 
 };

@@ -1,31 +1,9 @@
 VERSION := $(shell grep . VERSION.txt | cut -f1 -d:)
 PROGRAM_NAME := myproj
 
-osRelease = $(shell lsb_release -r | sed -e "s/Release:\W*//" -e "s/\..*//")
-ifeq ($(osRelease),7)
-   hostName = $(shell hostname | sed -e "s:[-_].*::")$(osRelease)
-else
-   hostName = $(shell hostname | sed -e "s:[-_].*::")
-endif
-
-ifeq ($(hostName),nanohub7)
-   BIN = ../bin
-	MODINIT = . /etc/environ.sh
-   MODCMD = use -e -r anaconda3-5.1
-else
-ifeq ($(hostName),rice7)
-   BIN = ../bin/rice7
-	MODINIT = . $(MODULESHOME)/init/sh
-   MODCMD = module purge 2> /dev/null; module load gcc/7.3.0
-endif
-ifeq ($(hostName),brown7)
-   BIN = ../bin/brown7
-	MODINIT = . $(MODULESHOME)/init/sh
-   MODCMD = module purge 2> /dev/null; module load gcc/7.3.0
-endif
-endif
-
 CC := g++
+# CC := g++-mp-7 # typical macports compiler name
+# CC := g++-7 # typical homebrew compiler name 
 
 # Check for environment definitions of compiler 
 # e.g., on CC = g++-7 on OSX
@@ -52,22 +30,19 @@ ARCH := native # best auto-tuning
 # ARCH := nocona #64-bit pentium 4 or later 
 
 # CFLAGS := -march=$(ARCH) -Ofast -s -fomit-frame-pointer -mfpmath=both -fopenmp -m64 -std=c++11
-# remove the -march arg to avoid SIGILL error on nanoHUB
-CFLAGS := -O3 -fomit-frame-pointer -mfpmath=both -fopenmp -m64 -std=c++11
+CFLAGS := -march=$(ARCH) -O3 -fomit-frame-pointer -mfpmath=both -fopenmp -m64 -std=c++11
+
 ifeq ($(OS),Windows_NT)
 else
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Darwin)
 		UNAME_P := $(shell uname -p)
-		var0 := $(shell which $(CC))
-		var1 := $(shell file $(var0))
-		var2 := $(lastword $(var1))
-		ifeq "$(var2)" "arm64"  # avoid mfpmath on Mac M1/silicon
-			CFLAGS := -O3 -fomit-frame-pointer -fopenmp -m64 -std=c++11
+		var := $(shell which $(CC) | xargs file)
+		ifeq ($(lastword $(var)),arm64)
+		  CFLAGS := -march=$(ARCH) -O3 -fomit-frame-pointer -fopenmp -m64 -std=c++11
 		endif
 	endif
 endif
-
 
 COMPILE_COMMAND := $(CC) $(CFLAGS) 
 
@@ -82,7 +57,7 @@ PhysiCell_pugixml.o PhysiCell_settings.o PhysiCell_geometry.o
 
 # put your custom objects here (they should be in the custom_modules directory)
 
-PhysiCell_custom_module_OBJECTS := custom.o mechanics.o
+PhysiCell_custom_module_OBJECTS := custom.o
 
 pugixml_OBJECTS := pugixml.o
 
@@ -93,6 +68,12 @@ ALL_OBJECTS := $(PhysiCell_OBJECTS) $(PhysiCell_custom_module_OBJECTS)
 
 all: main.cpp $(ALL_OBJECTS)
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME) $(ALL_OBJECTS) main.cpp 
+	make name
+
+name:
+	@echo ""
+	@echo "Executable name is" $(PROGRAM_NAME)
+	@echo ""
 
 # PhysiCell core components	
 
@@ -171,12 +152,12 @@ PhysiCell_pugixml.o: ./modules/PhysiCell_pugixml.cpp
 	
 PhysiCell_settings.o: ./modules/PhysiCell_settings.cpp
 	$(COMPILE_COMMAND) -c ./modules/PhysiCell_settings.cpp
-
+	
 PhysiCell_basic_signaling.o: ./core/PhysiCell_basic_signaling.cpp
-	$(COMPILE_COMMAND) -c ./core/PhysiCell_basic_signaling.cpp
-
+	$(COMPILE_COMMAND) -c ./core/PhysiCell_basic_signaling.cpp 	
+	
 PhysiCell_geometry.o: ./modules/PhysiCell_geometry.cpp
-	$(COMPILE_COMMAND) -c ./modules/PhysiCell_geometry.cpp
+	$(COMPILE_COMMAND) -c ./modules/PhysiCell_geometry.cpp 
 	
 # user-defined PhysiCell modules
 
@@ -184,37 +165,28 @@ custom.o: ./custom_modules/custom.cpp
 	$(COMPILE_COMMAND) -c ./custom_modules/custom.cpp
 
 # cleanup
-# next 2 targets for nanoHUB
-install:
-	$(MODINIT); $(MODCMD);  make all
-	install --mode 0755 -D $(PROGRAM_NAME) $(BIN)/$(PROGRAM_NAME)
 
-distclean: clean
-	rm -f $(BIN)/$(PROGRAM_NAME)
-	rm -rf $(BIN)/__pycache__
-	rm -rf ../.ipynb_checkpoints
-
+reset:
+	rm -f *.cpp 
+	cp ./sample_projects/Makefile-default Makefile 
+	rm -f ./custom_modules/*
+	touch ./custom_modules/empty.txt 
+	touch ALL_CITATIONS.txt 
+	touch ./core/PhysiCell_cell.cpp
+	rm ALL_CITATIONS.txt 
+	cp ./config/PhysiCell_settings-backup.xml ./config/PhysiCell_settings.xml 
+	touch ./config/empty.csv
+	rm -f ./config/*.csv
+	
 clean:
 	rm -f *.o
-	rm -f $(PROGRAM_NAME)
+	rm -f $(PROGRAM_NAME)*
 	
 data-cleanup:
-	rm -f *.mat
-	rm -f *.xml
-	rm -f *.svg
 	rm -rf ./output
 	mkdir ./output
 	touch ./output/empty.txt
 	
-FOLDER := output
-FRAMERATE := 24
-movie:
-	#copy $(FOLDER)/snap*.jpg .
-	mencoder "mf://snapshot*.jpg" -ovc lavc -lavcopts vcodec=mpeg4:vbitrate=10000:mbd=2:trell -mf fps=$(FRAMERATE):type=jpg -nosound -o out.avi	
-	# mencoder "mf://snapshot*.jpg" -ovc lavc -lavcopts vcodec=mpeg4:vbitrate=10000:mbd=2:trell -mf fps=$(FRAMERATE):type=jpg -nosound -o out.mp4 -of mpeg
-	ffmpeg -i out.avi -vcodec libx264 -pix_fmt yuv420p -strict -2 -acodec aac out.mp4
-	ffmpeg -r 24 -f image2 -i snapshot%08d.jpg -vcodec libx264 -pix_fmt yuv420p -strict -2 -acodec aac out1.mp4
-	#del snap*.jpg
 # archival 
 	
 checkpoint: 
@@ -239,3 +211,52 @@ unzip:
 untar: 
 	cp ./archives/latest.tar .
 	tar -xzf latest.tar
+
+# easier animation 
+
+FRAMERATE := 24
+OUTPUT := output
+
+jpeg: 
+	@magick identify -format "%h" $(OUTPUT)/initial.svg >> __H.txt 
+	@magick identify -format "%w" $(OUTPUT)/initial.svg >> __W.txt 
+	@expr 2 \* \( $$(grep . __H.txt) / 2 \) >> __H1.txt 
+	@expr 2 \* \( $$(grep . __W.txt) / 2 \) >> __W1.txt 
+	@echo "$$(grep . __W1.txt)!x$$(grep . __H1.txt)!" >> __resize.txt 
+	@magick mogrify -format jpg -resize $$(grep . __resize.txt) $(OUTPUT)/s*.svg
+	rm -f __H*.txt __W*.txt __resize.txt 
+	
+gif: 
+	magick convert $(OUTPUT)/s*.svg $(OUTPUT)/out.gif 
+	 
+movie:
+	ffmpeg -r $(FRAMERATE) -f image2 -i $(OUTPUT)/snapshot%08d.jpg -vcodec libx264 -pix_fmt yuv420p -strict -2 -tune animation -crf 15 -acodec none $(OUTPUT)/out.mp4
+	
+# upgrade rules 
+
+SOURCE := PhysiCell_upgrade.zip 
+get-upgrade: 
+	@echo $$(curl https://raw.githubusercontent.com/MathCancer/PhysiCell/master/VERSION.txt) >> VER.txt 
+	@echo https://github.com/MathCancer/PhysiCell/releases/download/$$(grep . VER.txt)/PhysiCell_V.$$(grep . VER.txt).zip >> DL_FILE.txt 
+	rm -f VER.txt
+	$$(curl -L $$(grep . DL_FILE.txt) --output PhysiCell_upgrade.zip)
+	rm -f DL_FILE.txt 
+
+PhysiCell_upgrade.zip: 
+	make get-upgrade 
+
+upgrade: $(SOURCE)
+	unzip $(SOURCE) PhysiCell/VERSION.txt
+	mv -f PhysiCell/VERSION.txt . 
+	unzip $(SOURCE) PhysiCell/core/* 
+	cp -r PhysiCell/core/* core 
+	unzip $(SOURCE) PhysiCell/modules/* 
+	cp -r PhysiCell/modules/* modules 
+	unzip $(SOURCE) PhysiCell/sample_projects/* 
+	cp -r PhysiCell/sample_projects/* sample_projects 
+	unzip $(SOURCE) PhysiCell/BioFVM/* 
+	cp -r PhysiCell/BioFVM/* BioFVM
+	unzip $(SOURCE) PhysiCell/documentation/User_Guide.pdf
+	mv -f PhysiCell/documentation/User_Guide.pdf documentation
+	rm -f -r PhysiCell
+	rm -f $(SOURCE) 
