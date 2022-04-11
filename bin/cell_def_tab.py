@@ -43,7 +43,7 @@ class CellDef(QWidget):
         self.units_width = 70
         self.idx_current_cell_def = 1    # 1-offset for XML (ElementTree, ET)
         self.xml_root = None
-        self.debug_print_fill_xml = True
+        self.debug_print_fill_xml = False
         self.custom_data_count = 0
         self.max_custom_data_rows = 99
         self.max_entries = self.max_custom_data_rows
@@ -3896,6 +3896,8 @@ class CellDef(QWidget):
         print("    self.param_d = ",self.param_d)
         self.master_custom_varname.clear()
 
+        debug_print = False
+
         uep = self.xml_root.find(".//cell_definitions")
         if uep:
             self.tree.clear()
@@ -3921,12 +3923,14 @@ class CellDef(QWidget):
 
                 # Now fill the param dict for each substrate and the Qt widget values for the 0th
 
-                print("\n===== populate_tree():  cycle")
+                if debug_print:
+                    print("\n===== populate_tree():  cycle")
 
                 cycle_path = ".//cell_definition[" + str(idx) + "]//phenotype//cycle"
-                print(" >> cycle_path=",cycle_path)
                 cycle_code = int(uep.find(cycle_path).attrib['code'])
-                print("   cycle code=",cycle_code)
+                if debug_print:
+                    print(" >> cycle_path=",cycle_path)
+                    print("   cycle code=",cycle_code)
 
                 # NOTE: we don't seem to use 3 or 4
                 # static const int advanced_Ki67_cycle_model= 0;
@@ -4030,7 +4034,8 @@ class CellDef(QWidget):
                 self.param_d[cell_def_name]['cycle_quiescent_trate10_fixed'] = default_bval
 
                 phase_transition_path = cycle_path + "//phase_transition_rates"
-                print(' >> phase_transition_path ')
+                if debug_print:
+                    print(' >> phase_transition_path ')
                 pt_uep = uep.find(phase_transition_path)
                 if pt_uep:
                     self.cycle_rb1.setChecked(True)
@@ -4039,7 +4044,8 @@ class CellDef(QWidget):
                     self.customize_cycle_choices()
 
                     for rate in pt_uep: 
-                        print(rate)
+                        if debug_print:
+                            print(rate)
                         # print("start_index=",rate.attrib["start_index"])
                         # We only use cycle code=5 or 6 in ALL sample projs?
 
@@ -4053,7 +4059,8 @@ class CellDef(QWidget):
                         sval = rate.text
                         if (rate.attrib['start_index'] == "0"): 
                             if (rate.attrib['end_index'] == "0"): #  Must be 'live'
-                                print('--  cycle_live_trate00',  sval)
+                                if debug_print:
+                                    print('--  cycle_live_trate00',  sval)
                                 self.param_d[cell_def_name]['cycle_live_trate00'] = rate.text
                                 if (rate.attrib['fixed_duration'].lower() == "true"): 
                                     self.param_d[cell_def_name]['cycle_live_trate00_fixed'] = True
@@ -4202,9 +4209,11 @@ class CellDef(QWidget):
                 self.param_d[cell_def_name]['cycle_quiescent_duration10_fixed'] = default_bval
 
                 phase_durations_path = cycle_path + "//phase_durations"
-                print(' >> phase_durations_path =',phase_durations_path )
+                if debug_print:
+                    print(' >> phase_durations_path =',phase_durations_path )
                 pd_uep = uep.find(phase_durations_path)
-                print(' >> pd_uep =',pd_uep )
+                if debug_print:
+                    print(' >> pd_uep =',pd_uep )
                 if pd_uep:
                     self.cycle_rb2.setChecked(True)
                     self.param_d[cell_def_name]['cycle_duration_flag'] = True
@@ -4219,7 +4228,8 @@ class CellDef(QWidget):
                 # elif cycle_code == 7: # 'cycling quiescent'
 
                     for pd in pd_uep:   # phase_duration
-                        print(pd)
+                        if debug_print:
+                            print(pd)
                         # print("index=",pd.attrib["index"])
                         sval = pd.text
 
@@ -4302,7 +4312,8 @@ class CellDef(QWidget):
                 self.param_d[cell_def_name]['cycle_live_duration00'] = default_sval
 
                 # ---------  death 
-                print("\n===== populate_tree():  death")
+                if debug_print:
+                    print("\n===== populate_tree():  death")
 
                         #------ using transition_rates
                         # <death> 
@@ -4367,11 +4378,13 @@ class CellDef(QWidget):
 
                 # uep = self.xml_root.find('.//microenvironment_setup')  # find unique entry point
                 death_uep = uep.find(".//cell_definition[" + str(idx) + "]//phenotype//death")
-                print('death_uep=',death_uep)
+                if debug_print:
+                    print('death_uep=',death_uep)
 
                 for death_model in death_uep.findall('model'):
                     if "apoptosis" in death_model.attrib["name"].lower():
-                        print("-------- parsing apoptosis!")
+                        if debug_print:
+                            print("-------- parsing apoptosis!")
                         self.param_d[cell_def_name]["apoptosis_death_rate"] = death_model.find('death_rate').text
 
                         # 	<model code="100" name="apoptosis"> 
@@ -4383,13 +4396,15 @@ class CellDef(QWidget):
                         # 			<unlysed_fluid_change_rate units="1/min">0.01</unlysed_fluid_change_rate>
                         pd_uep = death_model.find("phase_durations")
                         if pd_uep is not None:
-                            print(' >> pd_uep =',pd_uep )
+                            if debug_print:
+                                print(' >> pd_uep =',pd_uep )
                             self.param_d[cell_def_name]['apoptosis_duration_flag'] = True
                             # self.apoptosis_rb2.setChecked(True)  # duration
 
                             for pd in pd_uep:   # <duration index= ... >
-                                print(pd)
-                                print("index=",pd.attrib["index"])
+                                if debug_print:
+                                    print(pd)
+                                    print("index=",pd.attrib["index"])
                                 if  pd.attrib['index'] == "0":
                                     self.param_d[cell_def_name]["apoptosis_phase0_duration"] = pd.text
                                     if  pd.attrib['fixed_duration'].lower() == "true":
@@ -4403,12 +4418,14 @@ class CellDef(QWidget):
                             #     </phase_transition_rates>
                             tr_uep = death_model.find("phase_transition_rates")
                             if tr_uep is not None:
-                                print(' >> tr_uep =',tr_uep )
+                                if debug_print:
+                                    print(' >> tr_uep =',tr_uep )
                                 # self.apoptosis_rb1.setChecked(True)  # trate01
 
                                 for tr in tr_uep:   # <duration index= ... >
-                                    print(tr)
-                                    print("start_index=",tr.attrib["start_index"])
+                                    if debug_print:
+                                        print(tr)
+                                        print("start_index=",tr.attrib["start_index"])
 
                                     if  tr.attrib['start_index'] == "0":
                                         self.param_d[cell_def_name]["apoptosis_trate01"] = tr.text
@@ -4432,18 +4449,21 @@ class CellDef(QWidget):
                 #--------------
                 # necrosis_params_path = necrosis_path + "parameters//"
                     elif "necrosis" in death_model.attrib["name"].lower():
-                        print("-------- parsing necrosis!")
+                        if debug_print:
+                            print("-------- parsing necrosis!")
                         self.param_d[cell_def_name]["necrosis_death_rate"] = death_model.find('death_rate').text
 
                         pd_uep = death_model.find("phase_durations")
                         if pd_uep is not None:
-                            print(' >> pd_uep =',pd_uep )
+                            if debug_print:
+                                print(' >> pd_uep =',pd_uep )
                             # self.necrosis_rb2.setChecked(True)  # duration
                             self.param_d[cell_def_name]['necrosis_duration_flag'] = True
 
                             for pd in pd_uep:   # <duration index= ... >
-                                print(pd)
-                                print("index=",pd.attrib["index"])
+                                if debug_print:
+                                    print(pd)
+                                    print("index=",pd.attrib["index"])
                                 if  pd.attrib['index'] == "0":
                                     self.param_d[cell_def_name]["necrosis_phase0_duration"] = pd.text
                                     if  pd.attrib['fixed_duration'].lower() == "true":
@@ -4463,19 +4483,23 @@ class CellDef(QWidget):
                             #     </phase_transition_rates>
                             tr_uep = death_model.find("phase_transition_rates")
                             if tr_uep is not None:
-                                print(' >> tr_uep =',tr_uep )
+                                if debug_print:
+                                    print(' >> tr_uep =',tr_uep )
                                 # self.necrosis_rb1.setChecked(True)  
                                 for tr in tr_uep:  # transition rate 
-                                    print(tr)
-                                    print("start_index=",tr.attrib["start_index"])
+                                    if debug_print:
+                                        print(tr)
+                                        print("start_index=",tr.attrib["start_index"])
                                     if  tr.attrib['start_index'] == "0":
                                         rate = float(tr.text)
-                                        print(" --- transition rate (float) = ",rate)
+                                        if debug_print:
+                                            print(" --- transition rate (float) = ",rate)
                                         if abs(rate) < 1.e-6:
                                             dval = 9.e99
                                         else:
                                             dval = rate * 60.0
-                                        print(" --- transition rate (float) = ",rate)
+                                        if debug_print:
+                                            print(" --- transition rate (float) = ",rate)
                                         # self.param_d[cell_def_name]["necrosis_phase0_duration"] = tr.text
                                         self.param_d[cell_def_name]["necrosis_phase0_duration"] = str(dval)
                                         if  tr.attrib['fixed_duration'].lower() == "true":
@@ -4516,7 +4540,8 @@ class CellDef(QWidget):
                         # 	<relative_rupture_volume units="dimensionless">2.0</relative_rupture_volume>
 
                 volume_path = ".//cell_definition[" + str(idx) + "]//phenotype//volume//"
-                print('volume_path=',volume_path)
+                if debug_print:
+                    print('volume_path=',volume_path)
 
                 # self.volume_total.setText(uep.find(volume_path+"total").text)
                 # self.volume_fluid_fraction.setText(uep.find(volume_path+"fluid_fraction").text)
@@ -4540,7 +4565,8 @@ class CellDef(QWidget):
 
 
                 # # ---------  mechanics 
-                print("\n===== populate_tree():  mechanics")
+                if debug_print:
+                    print("\n===== populate_tree():  mechanics")
                         # <mechanics> 
                         # 	<cell_cell_adhesion_strength units="micron/min">0.4</cell_cell_adhesion_strength>
                         # 	<cell_cell_repulsion_strength units="micron/min">10.0</cell_cell_repulsion_strength>
@@ -4552,7 +4578,8 @@ class CellDef(QWidget):
                         # 	</options>
 
                 mechanics_path = ".//cell_definition[" + str(idx) + "]//phenotype//mechanics//"
-                print('mechanics_path=',mechanics_path)
+                if debug_print:
+                    print('mechanics_path=',mechanics_path)
 
                 # self.cell_cell_adhesion_strength.setText(uep.find(mechanics_path+"cell_cell_adhesion_strength").text)
                 # self.cell_cell_repulsion_strength.setText(uep.find(mechanics_path+"cell_cell_repulsion_strength").text)
@@ -4590,7 +4617,8 @@ class CellDef(QWidget):
 
 
                 # # ---------  motility 
-                print("\n===== populate_tree():  motility")
+                if debug_print:
+                    print("\n===== populate_tree():  motility")
                         # <motility>  
                         # 	<speed units="micron/min">5.0</speed>
                         # 	<persistence_time units="min">5.0</persistence_time>
@@ -4607,7 +4635,8 @@ class CellDef(QWidget):
                         # 	</options>
 
                 motility_path = ".//cell_definition[" + str(idx) + "]//phenotype//motility//"
-                print('motility_path=',motility_path)
+                if debug_print:
+                    print('motility_path=',motility_path)
 
                 val = uep.find(motility_path+"speed").text
                 self.param_d[cell_def_name]["speed"] = val
@@ -4658,7 +4687,8 @@ class CellDef(QWidget):
 
 
                 # # ---------  secretion 
-                print("\n===== populate_tree():  secretion")
+                if debug_print:
+                    print("\n===== populate_tree():  secretion")
 
                 # <substrate name="virus">
                 #     <secretion_rate units="1/min">0</secretion_rate>
@@ -4668,11 +4698,13 @@ class CellDef(QWidget):
                 # </substrate> 
 
                 secretion_path = ".//cell_definition[" + str(idx) + "]//phenotype//secretion//"
-                print('secretion_path =',secretion_path)
+                if debug_print:
+                    print('secretion_path =',secretion_path)
                 secretion_sub1_path = ".//cell_definition[" + str(idx) + "]//phenotype//secretion//substrate[1]//"
 
                 uep_secretion = self.xml_root.find(".//cell_definitions//cell_definition[" + str(idx) + "]//phenotype//secretion")
-                print('uep_secretion = ',uep_secretion )
+                if debug_print:
+                    print('uep_secretion = ',uep_secretion )
                 
 
                 # e.g.: param_d["cancer cell"]["oxygen"]["secretion_rate"] = 0.0
@@ -4698,7 +4730,8 @@ class CellDef(QWidget):
                     if jdx == 0:
                         self.current_secretion_substrate = substrate_name
 
-                    print(jdx,") -- secretion substrate = ",substrate_name)
+                    if debug_print:
+                        print(jdx,") -- secretion substrate = ",substrate_name)
                     # self.param_d[self.current_cell_def]["secretion"][substrate_name]["secretion_rate"] = {}
                     self.param_d[cell_def_name]["secretion"][substrate_name] = {}
 
@@ -4733,23 +4766,25 @@ class CellDef(QWidget):
 
                     jdx += 1
 
-                print("------ done parsing secretion:")
+                if debug_print:
+                    print("------ done parsing secretion:")
                 # print("------ self.param_d = ",self.param_d)
                 
 
                 # # ---------  molecular 
-                print("\n===== populate_tree():  molecular")
+                    print("\n===== populate_tree():  molecular")
 
 
                 # # ---------  custom data 
-                print("\n===== populate_tree():  custom data")
+                    print("\n===== populate_tree():  custom data")
                 # <custom_data>  
                 # 	<receptor units="dimensionless">0.0</receptor>
                 # 	<cargo_release_o2_threshold units="mmHg">10</cargo_release_o2_threshold>
 
                 uep_custom_data = self.xml_root.find(".//cell_definitions//cell_definition[" + str(idx) + "]//custom_data")
                 # custom_data_path = ".//cell_definition[" + str(self.idx_current_cell_def) + "]//custom_data//"
-                print('uep_custom_data=',uep_custom_data)
+                if debug_print:
+                    print('uep_custom_data=',uep_custom_data)
 
                 # for jdx in range(self.custom_data_count):
                 #     self.custom_data_name[jdx].setText('')
