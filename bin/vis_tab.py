@@ -42,6 +42,8 @@ class Vis(QWidget):
         self.bgcolor = [1,1,1,1]  # all 1.0 for white 
 
         self.animating_flag = False
+        self.last_frame = -1
+        self.loop_flag = False # rwh: todo
 
         self.xml_root = None
         self.current_svg_frame = 0
@@ -709,7 +711,8 @@ class Vis(QWidget):
             self.reset_model()
             self.reset_model_flag = False
 
-        self.current_svg_frame += 1
+        if self.current_svg_frame < self.last_frame:
+            self.current_svg_frame += 1
         # print('svg # ',self.current_svg_frame)
 
         self.update_plots()
@@ -720,6 +723,10 @@ class Vis(QWidget):
 
     # used by animate
     def play_plot_cb(self):
+        # if (self.current_svg_frame == self.last_frame) and (self.animating_flag == False):
+        if (self.current_svg_frame == self.last_frame) and self.loop_flag:
+            self.current_svg_frame = 0
+                
         for idx in range(1):
             self.current_svg_frame += 1
             # print('svg # ',self.current_svg_frame)
@@ -734,9 +741,11 @@ class Vis(QWidget):
                 # print("Once output files are generated, click the slider.")   
                 print("play_plot_cb():  Reached the end (or no output files found).")
                 # self.timer.stop()
-                # self.current_svg_frame -= 1
+                self.current_svg_frame -= 1
+                self.last_frame = self.current_svg_frame
+                print("     self.current_svg_frame = ",self.current_svg_frame)
                 self.animating_flag = True
-                self.current_svg_frame = 0
+                # self.current_svg_frame = 0
                 self.animate()
                 return
 
@@ -824,7 +833,7 @@ class Vis(QWidget):
 
 
     def create_figure(self):
-        print("\n--------- create_figure(): ------- creating figure, canvas, ax0")
+        print("\n\n\n--------- create_figure(): ------- creating figure, canvas, ax0")
         self.figure = plt.figure()
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.canvas.setStyleSheet("background-color:transparent;")
@@ -855,7 +864,7 @@ class Vis(QWidget):
         # else:
         #     self.plot_substrate(self.current_svg_frame)
 
-        print("create_figure(): ------- creating dummy contourf")
+        print("\ncreate_figure(): ------- creating dummy contourf")
         xlist = np.linspace(-3.0, 3.0, 50)
         print("len(xlist)=",len(xlist))
         ylist = np.linspace(-3.0, 3.0, 50)
@@ -876,7 +885,8 @@ class Vis(QWidget):
 
         # substrate_plot = self.ax0.contourf(xgrid, ygrid, M[self.field_index, :].reshape(self.numy,self.numx), num_contours, cmap='viridis')  # self.colormap_dd.value)
 
-        print("------------create_figure():  # axes = ",len(self.figure.axes))
+        print("\n\n------------create_figure():  # axes = ",len(self.figure.axes))
+        print("\n\n")
 
         # self.imageInit = [[255] * 320 for i in range(240)]
         # self.imageInit[0][0] = 0
@@ -1373,11 +1383,9 @@ class Vis(QWidget):
             label = self.figure.axes[-1].get_ylabel()
             self.figure.axes[-1].remove()  # replace/update the colorbar
             cax = self.figure.add_axes([pts[0][0],pts[0][1],pts[1][0]-pts[0][0],pts[1][1]-pts[0][1]  ])
-            
-            #rwh
-            # self.cbar = self.figure.colorbar(substrate_plot, cax=cax)
-            # self.cbar.ax.set_ylabel(label)
-            # self.cbar.ax.tick_params(labelsize=self.fontsize)
+            self.cbar = self.figure.colorbar(substrate_plot, cax=cax)
+            self.cbar.ax.set_ylabel(label)
+            self.cbar.ax.tick_params(labelsize=self.fontsize)
 
             # unfortunately the aspect is different between the initial call to colorbar 
             #   without cax argument. Try to reset it (but still it's somehow different)
