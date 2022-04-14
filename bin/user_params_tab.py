@@ -27,7 +27,8 @@ class UserParams(QtWidgets.QWidget):
         # self.current_param = None
         self.xml_root = None
         self.count = 0
-        self.max_rows = 100  # initially
+        # self.max_rows = 99  # initially
+        self.max_rows = 20
 
         #-------------------------------------------
         self.label_width = 150
@@ -330,6 +331,8 @@ class UserParams(QtWidgets.QWidget):
             #     print("----- no description found. ")
 
             idx += 1
+
+        print("\n\n------------  fill_gui: # user params= ",idx)
 
     # Generate the .xml to reflect changes in the GUI
     def fill_xml(self):
