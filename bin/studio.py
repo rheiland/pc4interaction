@@ -25,7 +25,7 @@ from PyQt5.QtWidgets import *
 from config_tab import Config
 from cell_def_tab import CellDef 
 from microenv_tab import SubstrateDef 
-from rules_tab import RulesDef 
+# from rules_tab import RulesDef 
 from user_params_tab import UserParams 
 from run_tab import RunModel 
 from vis_tab import Vis 
@@ -157,8 +157,8 @@ class PhysiCellXMLCreator(QWidget):
         # self.cell_customdata_tab.fill_gui(self.celldef_tab)
         # self.celldef_tab.fill_custom_data_tab()
 
-        self.rules_tab = RulesDef()
-        self.rules_tab.xml_root = self.xml_root
+        # self.rules_tab = RulesDef()
+        # self.rules_tab.xml_root = self.xml_root
         # self.rules_tab.fill_gui()
         
         self.user_params_tab = UserParams()
@@ -189,7 +189,7 @@ class PhysiCellXMLCreator(QWidget):
             self.run_tab.config_tab = self.config_tab
             self.run_tab.microenv_tab = self.microenv_tab 
             self.run_tab.celldef_tab = self.celldef_tab
-            self.run_tab.rules_tab = self.rules_tab
+            # self.run_tab.rules_tab = self.rules_tab
             self.run_tab.user_params_tab = self.user_params_tab
             self.run_tab.tree = self.tree
 
