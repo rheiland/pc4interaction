@@ -1,4 +1,4 @@
-# pc4membrane2D
+# pc4interaction
 
 Studio GUI to explore test case of PhysiCell subcell mechanics near a membrane
 
