@@ -7,8 +7,8 @@ Compile the C++ model:
 cd src
 make
 
-# copy the executable to where the Studio wants it:
-cp myproj ..
+# move/rename the executable to where the Studio wants it:
+mv interaction_demo ../myproj
 
 # Change directory to the root dir and run the GUI from there
 cd ..
